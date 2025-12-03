@@ -26,7 +26,7 @@ impl Padlock {
             Some(v) => v,
             None => {
                 println!("Rotated a full turn");
-                return self.current.clone();
+                return self.current;
             }
         };
         match dir {
@@ -35,36 +35,28 @@ impl Padlock {
                 // TODO: Handle the left overflow case
                 // TODO: Handle the left multiple case
                 match self.current.checked_sub(offset) {
-                    Some(loc) => return loc,
-                    None => {
-                        match offset.checked_sub(self.current) {
-                            Some(of) => return self.dial.len() - of,
-                            None => {
-                                println!(
-                                    "We shouldn't be getting here! We've failed on both directions"
-                                );
-                                panic!("Failed in rotating left");
-                            }
-                        };
-                    }
+                    Some(loc) => loc,
+                    None => match offset.checked_sub(self.current) {
+                        Some(of) => self.dial.len() - of,
+                        None => {
+                            println!(
+                                "We shouldn't be getting here! We've failed on both directions"
+                            );
+                            panic!("Failed in rotating left");
+                        }
+                    },
                 }
             }
             Rotation::R => {
                 // TODO: Handle the right case
                 // TODO: Handle the right overflow case
-                // TODO: Handle the right multiple case
-                match (self.current + offset) > 99 {
-                    Some(loc) => return loc,
+                // TODO: Handle the right multiple case <- this is handled by the clamped
+                // check
+                match upper_clamp(self.current + offset, 99) {
+                    Some(loc) => loc,
                     None => {
-                        match offset.checked_sub(self.current) {
-                            Some(of) => return self.dial.len() - of,
-                            None => {
-                                println!(
-                                    "We shouldn't be getting here! We've failed on both directions"
-                                );
-                                panic!("Failed in rotating left");
-                            }
-                        };
+                        let to_zero = 99 - self.current;
+                        self.current - to_zero - 1
                     }
                 }
             }
@@ -72,6 +64,14 @@ impl Padlock {
     }
     pub fn rotate(&mut self, offset: usize) -> u32 {
         todo!()
+    }
+}
+// This function takes an input and evaluates it against the upper bound.
+// This function primarily preserves the API of the get_next_location function
+pub fn upper_clamp(input: usize, upper_bound: usize) -> Option<usize> {
+    match input > upper_bound {
+        true => None,
+        false => Some(input),
     }
 }
 
@@ -83,5 +83,16 @@ mod tests {
         let padlock = Padlock::new();
         assert_eq!(padlock.current, 50);
         assert_eq!(padlock.dial[padlock.current], 50);
+    }
+    #[test]
+    fn test_get_next_location() {
+        let padlock = Padlock::new();
+        assert_eq!(padlock.get_next_location(50, Rotation::R), 0);
+    }
+    #[test]
+    fn test_rollover() {
+        let mut padlock = Padlock::new();
+        padlock.current = 99;
+        assert_eq!(padlock.get_next_location(1, Rotation::R), 0);
     }
 }
