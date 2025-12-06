@@ -149,7 +149,7 @@ impl Padlock {
                 // TODO: Handle the left multiple case
                 match self.current.checked_sub(rot.offset) {
                     Some(loc) => {
-                        println!("left rotation after: {loc}");
+                        // println!("left rotation after: {loc}");
                         loc
                     }
                     None => match rot.offset.checked_sub(self.current) {
@@ -187,7 +187,7 @@ impl Padlock {
         match rot.dir {
             Direction::L => match self.current.checked_sub(rot.offset) {
                 Some(loc) => {
-                    println!("left rotation after: {loc}");
+                    // println!("left rotation after: {loc}");
                     (loc, false)
                 }
                 None => match rot.offset.checked_sub(self.current) {
@@ -203,10 +203,10 @@ impl Padlock {
                 None => {
                     let to_zero = 99 - self.current;
                     let remaining = rot.offset - to_zero;
-                    println!(
-                        "values: offset: {}, to_zero: {to_zero}, remaining: {remaining}",
-                        rot.offset
-                    );
+                    // println!(
+                    //     "values: offset: {}, to_zero: {to_zero}, remaining: {remaining}",
+                    //     rot.offset
+                    // );
                     (remaining - 1, true)
                 }
             },
@@ -240,12 +240,18 @@ impl Padlock {
     }
     pub fn evaluate_tracked(&mut self, ops: &[(Rotation, usize)]) -> u32 {
         let mut acc = 0;
+        let mut turns = 0;
+        for (_, si) in ops {
+            turns += si;
+        }
+        println!("turns: {turns}");
         for (rot, rotations) in ops {
+            //println!("number of rotations: {rotations} number of moves: {rot:?}");
             if self.rotate_tracked(rot) {
                 acc += 1
             }
-            if rotations > &0 {
-                println!("Rotations: {rotations}");
+            if self.current == 0 {
+                acc -= 1;
             }
             acc += *rotations as u32;
         }
