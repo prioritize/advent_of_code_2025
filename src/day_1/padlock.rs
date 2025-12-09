@@ -19,6 +19,9 @@ impl Rotation {
         let offset = clamp_to_one_rotation(offset);
         Self { dir, offset }
     }
+    pub fn new_naive(dir: Direction, offset: usize) -> Self {
+        Self { dir, offset }
+    }
 }
 #[derive(Debug)]
 pub enum Direction {
@@ -65,6 +68,19 @@ fn parse_line_to_rotation_tracked(l: String) -> (Rotation, usize) {
     };
     (Rotation::new(dir, offset.0), offset.1)
 }
+fn parse_line_to_rotation_simple(l: String) -> Rotation {
+    let dir = match l.chars().nth(0).unwrap() {
+        'R' => Direction::R,
+        'L' => Direction::L,
+        _ => panic!("Got bad data in parse_line_to_rotation_simple"),
+    };
+    let offset = l[1..].parse::<usize>().unwrap();
+    if offset > 99 {
+        println!("Over a hundred!");
+    }
+
+    Rotation::new_naive(dir, offset)
+}
 fn parse_line_to_rotation(l: String) -> Rotation {
     let length = l.len();
     let dir = match l.chars().nth(0) {
@@ -110,6 +126,24 @@ pub fn parse_day_1_input(f_name: &str) -> Result<Vec<Rotation>> {
     lines.iter().for_each(|x| println!("{x:?}"));
     Ok(lines)
 }
+pub fn parse_day_1_input_naive(f_name: &str) -> Result<Vec<Rotation>> {
+    let file = File::open(f_name)?;
+    let reader = BufReader::new(file);
+    let lines = reader
+        .lines()
+        .map(|l| {
+            if let Ok(line) = l {
+                parse_line_to_rotation_simple(line)
+            } else {
+                println!("Got bad input");
+                panic!("Bad input");
+            }
+        })
+        .collect::<Vec<Rotation>>();
+
+    //lines.iter().for_each(|x| println!("{x:?}"));
+    Ok(lines)
+}
 pub fn parse_day_1_input_tracked(f_name: &str) -> Result<Vec<(Rotation, usize)>> {
     let file = File::open(f_name)?;
     let reader = BufReader::new(file);
@@ -140,6 +174,50 @@ impl Padlock {
             dial: vd,
             current: 50,
         }
+    }
+    pub fn iterative_method(&mut self, ops: &[Rotation]) -> u32 {
+        let mut pos_list: Vec<usize> = Vec::with_capacity(1000000);
+        for r in ops {
+            match r.dir {
+                Direction::L => {
+                    if r.offset > 100 {
+                        println!("Rollover Left");
+                    }
+                    for _ in 0..r.offset {
+                        if self.current == 0 {
+                            self.current = 99;
+                            pos_list.push(self.current);
+                        } else {
+                            self.current -= 1;
+                            pos_list.push(self.current);
+                        }
+                    }
+                }
+                Direction::R => {
+                    if r.offset > 100 {
+                        println!("Rollover Right");
+                    }
+                    for _ in 0..r.offset {
+                        if self.current == 99 {
+                            self.current = 0;
+                            pos_list.push(self.current);
+                        } else {
+                            self.current += 1;
+                            pos_list.push(self.current);
+                        }
+                    }
+                }
+            }
+        }
+        let mut acc = 0;
+        for p in &pos_list {
+            if p == &0 {
+                acc += 1;
+            }
+        }
+        //println!("{pos_list:?}");
+
+        acc
     }
     pub fn get_next_location(&self, rot: &Rotation) -> usize {
         match rot.dir {
@@ -204,7 +282,7 @@ impl Padlock {
                     let to_zero = 99 - self.current;
                     let remaining = rot.offset - to_zero;
                     // println!(
-                    //     "values: offset: {}, to_zero: {to_zero}, remaining: {remaining}",
+                    //     "values: offset: {}, to_zero: {to_zero}, remaining: {remaining}",5983
                     //     rot.offset
                     // );
                     (remaining - 1, true)
@@ -399,6 +477,34 @@ mod tests {
         let rotations = parse_day_1_input_tracked("input/day_1_input.txt")?;
         let total_zeros = padlock.evaluate_tracked(&rotations);
         println!("Total Zeroes In Track Input: {total_zeros}");
+
+        Ok(())
+    }
+    #[test]
+    fn test_input_parse_naive() -> Result<()> {
+        let rotations = parse_day_1_input_naive("input/day_1_input.txt")?;
+        let mut padlock = Padlock::new();
+        for r in &rotations {
+            if r.offset > 99 {
+                println!("Over a hundred in test");
+            }
+        }
+        let zeroes = padlock.iterative_method(&rotations);
+        println!("Zeros: {zeroes}");
+
+        Ok(())
+    }
+    #[test]
+    fn test_input_parse_naive_test() -> Result<()> {
+        let rotations = parse_day_1_input_naive("input/day_1_test_input.txt")?;
+        let mut padlock = Padlock::new();
+        for r in &rotations {
+            if r.offset > 99 {
+                println!("Over a hundred in test");
+            }
+        }
+        let zeroes = padlock.iterative_method(&rotations);
+        println!("Zeros: {zeroes}");
 
         Ok(())
     }
